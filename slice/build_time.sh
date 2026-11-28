@@ -22,10 +22,18 @@ for m in ${MODES:-2 3}; do
   for depth in ${DEPTHS:-8 16 32 64}; do
     for fw in ${FIREWALLS:-0 8 4}; do
       start=$(date +%s.%N)
-      "$CXX" -std=c++23 -O2 -DNDEBUG -static -DTH_MODE=$m -DDEPTH=$depth -DFIREWALL=$fw \
-        -isystem "$STDEXEC" -I"$DIR" "$DIR/build_time.cpp" -o "$OUT/bt"
+      if ! "$CXX" -std=c++23 -O2 -DNDEBUG -static -ftemplate-depth=4096 -DTH_MODE=$m \
+        -DDEPTH=$depth -DFIREWALL=$fw -isystem "$STDEXEC" -I"$DIR" "$DIR/build_time.cpp" \
+        -o "$OUT/bt" >"$OUT/log" 2>&1; then
+        printf '%-8s %5d %8d %8s\n' "$mode" "$depth" "$fw" "fails: $(grep -m1 -o 'error: .*' "$OUT/log" | cut -c1-60)"
+        continue
+      fi
       end=$(date +%s.%N)
-      size=$(nm -S --size-sort -C "$OUT/bt" | awk '$3 ~ /[tTwW]/ && /run_chain|th::/ { s += strtonum("0x" $2) } END { print s + 0 }')
+      # code of the chain itself: run_chain and every function in th::
+      size=$(nm -S --size-sort -C "$OUT/bt" | python3 -c '
+import sys
+print(sum(int(f[1], 16) for f in (l.split(None, 3) for l in sys.stdin)
+          if len(f) == 4 and f[2] in "tTwW" and ("run_chain" in f[3] or "th::" in f[3])))')
       for k in 1 3; do
         if [ $k = 1 ]; then arg=; else arg=x; fi
         valgrind --tool=callgrind --branch-sim=yes \
@@ -34,7 +42,7 @@ for m in ${MODES:-2 3}; do
       set -- $(totals "$OUT/cg.1") $(totals "$OUT/cg.3")
       awk -v m="$mode" -v d="$depth" -v f="$fw" -v s="$start" -v e="$end" -v z="$size" \
           -v a="$1" -v b="$2" -v c="$3" -v g="$4" \
-        'BEGIN { printf "%-8s %5d %8d %8.2f %8d %10.1f %6.2f\n", m, d, f, e - s, z, (c - a) / 4000, (g - b) / 4000 }'
+        'BEGIN { printf "%-8s %5d %8d %8.2f %8d %10.1f %6.2f\n", m, d, f, e - s, z, (c - a) / 2000, (g - b) / 2000 }'
     done
   done
 done

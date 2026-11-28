@@ -23,6 +23,7 @@ way; see [Building](#building).
 | `kv-dest/` | Ten ways of telling a callee where each completion's payload goes (W-157) | none |
 | `tony/` | stdexec algorithms in C++26 beside a C++29 strawman, in Tony Tables | 30acdb0 |
 | `typed-handle/` | Typed operation handles (`operation_handle<R, Sig>`, with `start_t()` for starting) beside the erased one, in four modes | none |
+| `slice/` | The calling convention end to end: typed handles, a stand-in `function` with a hidden entry, frames on an async stack, and four result-destination designs, on kv_store's spine | none |
 
 Where a README names a file under `synthesis/` or `function-coroutines/`, that
 file is a design note in the Claude project, not in this repository.
